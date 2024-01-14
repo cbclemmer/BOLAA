@@ -5,16 +5,29 @@
  For full license text, see the LICENSE file in the repo root or https://www.apache.org/licenses/LICENSE-2.0
 """
 
-import random
-import re
-import json 
 import time
 import os
-import tiktoken
 import web_run.pre_prompt as pre_prompt
 from web_run.utils import get_query
 from web_run.llms import token_enc
+from web_run.multi_agent_arch import SearchAgent, ClickAgent, ControlAgent
 
+def select_agent(agent_name: str, llm, max_context_len: int):
+    if agent_name in ["React_Webrun_Agent"]:
+        agent = ReactAgent(llm, max_context_len)
+    elif agent_name in ["Zeroshot_Webrun_Agent"]:
+        agent = ZeroshotAgent(llm, max_context_len)
+    elif agent_name in ["ZeroshotThink_Webrun_Agent"]:
+        agent = ZeroshotThinkAgent(llm, max_context_len)
+    elif agent_name in ["Planner_Webrun_Agent"]:
+        agent = PlannerAgent(llm, max_context_len)
+    elif agent_name in ["PlannerReact_Webrun_Agent"]:
+        agent = PlannerReactAgent(llm, max_context_len)
+    elif agent_name in ["Search_Click_Controller_Webrun_Agent","Search_Click_Control_Webrun_Agent"]:
+        search_agent = SearchAgent(llm, max_context_len)
+        click_agent = ClickAgent(llm, max_context_len)
+        agent = ControlAgent([search_agent, click_agent])
+    return agent
 
 class BaseAgent(object):
     def __init__(self, llm, context_len=2000):

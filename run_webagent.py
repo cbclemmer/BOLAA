@@ -1,15 +1,11 @@
 import os
-import sys
-import json
-import random
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 import time
 
 from web_run.web_env import webshopEnv
 from web_run.llms import get_llm_backend, OPENAI_CHAT_MODELS, OPENAI_LLM_MODELS
-from web_run.multi_agent_arch import SearchAgent, ClickAgent, ControlAgent
-import web_run.agent_arch as agent_arch
+import web_run.agent_arch as select_agent
 from web_run.utils import session_save, get_instruction, get_env_botton
 from web_run.evaluate import get_file_sess_idx
 from web_run.config import available_agent_names
@@ -29,20 +25,7 @@ def run_one_session(idx, max_steps=50):
     env = webshopEnv()
     llm_backend = get_llm_backend(llm_name)
     llm = llm_backend.run
-    if agent_name in ["React_Webrun_Agent"]:
-        agent = agent_arch.ReactAgent(llm, max_context_len)
-    elif agent_name in ["Zeroshot_Webrun_Agent"]:
-        agent = agent_arch.ZeroshotAgent(llm, max_context_len)
-    elif agent_name in ["ZeroshotThink_Webrun_Agent"]:
-        agent = agent_arch.ZeroshotThinkAgent(llm, max_context_len)
-    elif agent_name in ["Planner_Webrun_Agent"]:
-        agent = agent_arch.PlannerAgent(llm, max_context_len)
-    elif agent_name in ["PlannerReact_Webrun_Agent"]:
-        agent = agent_arch.PlannerReactAgent(llm, max_context_len)
-    elif agent_name in ["Search_Click_Controller_Webrun_Agent","Search_Click_Control_Webrun_Agent"]:
-        search_agent = SearchAgent(llm, max_context_len)
-        click_agent = ClickAgent(llm, max_context_len)
-        agent = ControlAgent([search_agent, click_agent])
+    agent = select_agent(agent_name, llm, max_context_len)
 
     saving_path = f"./execution_data/{agent.type}_{llm_name}_batch.json"
     actions = []
