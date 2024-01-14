@@ -52,7 +52,7 @@ def get_actions(obs):
     avai_actions = {'click':get_buttons(obs)}
   return avai_actions
 
-def get_env_botton(bottons):
+def get_env_button(bottons):
   if "Search" in bottons:
     avai_actions = {'search':[]}
   else:

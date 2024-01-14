@@ -6,7 +6,7 @@ import time
 from web_run.web_env import webshopEnv
 from web_run.llms import get_llm_backend, OPENAI_CHAT_MODELS, OPENAI_LLM_MODELS
 import web_run.agent_arch as select_agent
-from web_run.utils import get_instruction, get_env_botton
+from web_run.utils import get_instruction, get_env_button
 from web_run.evaluate import get_file_sess_idx
 from web_run.config import available_agent_names
 
@@ -34,7 +34,7 @@ def run_one_session(idx, max_steps=50):
     idx = f"fixed_{idx}"
     done = False
     observation, reward, done, asins, buttons = env.step(idx, action)
-    env_bottons = get_env_botton(buttons)
+    env_buttons = get_env_button(buttons)
     agent.add_retrieved_item(asins)
     inst = get_instruction(observation)
     agent.new_session(idx, inst)
@@ -48,24 +48,23 @@ def run_one_session(idx, max_steps=50):
     
     # start interaction
     for _ in range(max_steps):
-        agent.add_retrieved_item(asins)
         if done:
             time.sleep(1)
             agent.save()
             print("saved!")
             return reward
 
-        action = agent.forward(observation, env_bottons).lstrip(' ') 
-        # print(observation)
+        action = agent.forward(observation, env_buttons).lstrip(' ') 
         print(action)
         if "No response" in action: # running too many sessions, end this session
             done = True
             return 0.0
         try:
             observation, reward, done, asins, buttons = env.step(idx, action)
+            agent.add_retrieved_item(asins)
             if "Buy Now" in action:
                 print(observation, reward, done, asins, buttons)
-            env_bottons = get_env_botton(buttons)
+            env_buttons = get_env_button(buttons)
         except AssertionError:
             observation = 'Invalid action!'
             hulluci += 1
@@ -86,7 +85,6 @@ def run_episodes(session_list):
         with ThreadPoolExecutor(max_workers=work_num) as executor:
             # executor.map will return a list of tuples in the same order as idxs[:10]
             results = list(executor.map(run_one_session, session_list))
-            # print(sum(results)/len(results))
             print("Done the session running!")
     else:
         for sid in session_list:
