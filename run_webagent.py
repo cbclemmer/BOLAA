@@ -28,7 +28,6 @@ def run_one_session(idx, max_steps=50):
     saving_path = f"./execution_data/{agent.type}_{llm_name}_batch.json"
     agent = select_agent(agent_name, llm, max_context_len, saving_path)
 
-    retrieved_items = []
     hulluci = 0
     # reset the environments
     action = 'reset'
@@ -36,7 +35,7 @@ def run_one_session(idx, max_steps=50):
     done = False
     observation, reward, done, asins, buttons = env.step(idx, action)
     env_bottons = get_env_botton(buttons)
-    retrieved_items.append(asins)
+    agent.add_retrieved_item(asins)
     inst = get_instruction(observation)
     agent.new_session(idx, inst)
     
@@ -49,10 +48,10 @@ def run_one_session(idx, max_steps=50):
     
     # start interaction
     for _ in range(max_steps):
-        retrieved_items.append(asins)
+        agent.add_retrieved_item(asins)
         if done:
             time.sleep(1)
-            agent.save(retrieved_items)
+            agent.save()
             print("saved!")
             return reward
 
@@ -75,10 +74,10 @@ def run_one_session(idx, max_steps=50):
             done = True
         if "handle_exception" in observation: # running too many sessions, end this session
             done = True
-            agent.save(retrieved_items)
+            agent.save()
             return 0.0
     
-    agent.save(retrieved_items)
+    agent.save()
     return 0.0
 
 def run_episodes(session_list):

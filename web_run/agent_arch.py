@@ -62,14 +62,19 @@ class BaseAgent(object):
             history += f"Observation: {self.observations[session][idx]}\n\n"
         return history
     
-    def save(self, retrieved_items):
+    def save(self, session: str=None):
+        if session is None:
+            session = self.cur_session
         session_save(
-            self.cur_session, 
-            self.actions[self.cur_session],
-            self.observations[self.cur_session],
-            retrieved_items,
+            session, 
+            self.actions[session],
+            self.observations[session],
+            self.item_recall[session],
             self.saving_path
         )
+
+    def add_retrieved_item(self, item):
+        self.item_recall[self.cur_session].append(item)
     
     def action_parser(self, text, available_actions):
         nor_text = text.strip().lower()
