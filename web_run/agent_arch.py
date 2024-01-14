@@ -6,13 +6,12 @@
 """
 
 import time
-import os
 import web_run.pre_prompt as pre_prompt
-from web_run.utils import get_query
+from web_run.utils import get_query, session_save
 from web_run.llms import token_enc
 from web_run.multi_agent_arch import SearchAgent, ClickAgent, ControlAgent
 
-def select_agent(agent_name: str, llm, max_context_len: int):
+def select_agent(agent_name: str, llm, max_context_len: int, saving_path: str):
     if agent_name in ["React_Webrun_Agent"]:
         agent = ReactAgent(llm, max_context_len)
     elif agent_name in ["Zeroshot_Webrun_Agent"]:
@@ -27,6 +26,7 @@ def select_agent(agent_name: str, llm, max_context_len: int):
         search_agent = SearchAgent(llm, max_context_len)
         click_agent = ClickAgent(llm, max_context_len)
         agent = ControlAgent([search_agent, click_agent])
+    agent.saving_path = saving_path
     return agent
 
 class BaseAgent(object):
@@ -41,6 +41,7 @@ class BaseAgent(object):
         self.llm = llm
         self.context_len = context_len
         self.cur_session = 0
+        self.saving_path = ''
         
     def new_session(self, idx, task):
         self.cur_session = idx
@@ -61,13 +62,14 @@ class BaseAgent(object):
             history += f"Observation: {self.observations[session][idx]}\n\n"
         return history
     
-    def save(self, path):
-        file_name = os.path.join(path, self.name+'_'+str(self.life_label))
-        with open(file_name, 'a') as f:
-            f.write(f"session_idx:{self.cur_session}\n")
-            history = self.get_history(self.cur_session)
-            f.write(history)
-            f.write('\n')
+    def save(self, retrieved_items):
+        session_save(
+            self.cur_session, 
+            self.actions[self.cur_session],
+            self.observations[self.cur_session],
+            retrieved_items,
+            self.saving_path
+        )
     
     def action_parser(self, text, available_actions):
         nor_text = text.strip().lower()

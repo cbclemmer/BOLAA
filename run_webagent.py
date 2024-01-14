@@ -6,7 +6,7 @@ import time
 from web_run.web_env import webshopEnv
 from web_run.llms import get_llm_backend, OPENAI_CHAT_MODELS, OPENAI_LLM_MODELS
 import web_run.agent_arch as select_agent
-from web_run.utils import session_save, get_instruction, get_env_botton
+from web_run.utils import get_instruction, get_env_botton
 from web_run.evaluate import get_file_sess_idx
 from web_run.config import available_agent_names
 
@@ -25,11 +25,9 @@ def run_one_session(idx, max_steps=50):
     env = webshopEnv()
     llm_backend = get_llm_backend(llm_name)
     llm = llm_backend.run
-    agent = select_agent(agent_name, llm, max_context_len)
-
     saving_path = f"./execution_data/{agent.type}_{llm_name}_batch.json"
-    actions = []
-    observations = []
+    agent = select_agent(agent_name, llm, max_context_len, saving_path)
+
     retrieved_items = []
     hulluci = 0
     # reset the environments
@@ -38,8 +36,6 @@ def run_one_session(idx, max_steps=50):
     done = False
     observation, reward, done, asins, buttons = env.step(idx, action)
     env_bottons = get_env_botton(buttons)
-    actions.append(action)
-    observations.append(observation)
     retrieved_items.append(asins)
     inst = get_instruction(observation)
     agent.new_session(idx, inst)
@@ -52,39 +48,37 @@ def run_one_session(idx, max_steps=50):
         observation = agent.plan
     
     # start interaction
-    for step in range(max_steps):
-        actions.append(action)
-        observations.append(observation)
+    for _ in range(max_steps):
         retrieved_items.append(asins)
-        if not done:
-            action = agent.forward(observation, env_bottons).lstrip(' ') 
-            # print(observation)
-            print(action)
-            if "No response" in action: # running too many sessions, end this session
-                done = True
-                # session_save(idx, actions, observations, retrieved_items, saving_path)
-                return 0.0
-            try:
-                observation, reward, done, asins, buttons = env.step(idx, action)
-                if "Buy Now" in action:
-                    print(observation, reward, done, asins, buttons)
-                env_bottons = get_env_botton(buttons)
-            except AssertionError:
-                observation = 'Invalid action!'
-                hulluci += 1
-            if hulluci > 3:
-                reward = 0.0
-                done = True
-            if "handle_exception" in observation: # running too many sessions, end this session
-                done = True
-                session_save(idx, actions, observations, retrieved_items, saving_path)
-                return 0.0
-        else:
+        if done:
             time.sleep(1)
-            session_save(idx, actions, observations, retrieved_items, saving_path)
+            agent.save(retrieved_items)
             print("saved!")
             return reward
-    session_save(idx, actions, observations, retrieved_items, saving_path)
+
+        action = agent.forward(observation, env_bottons).lstrip(' ') 
+        # print(observation)
+        print(action)
+        if "No response" in action: # running too many sessions, end this session
+            done = True
+            return 0.0
+        try:
+            observation, reward, done, asins, buttons = env.step(idx, action)
+            if "Buy Now" in action:
+                print(observation, reward, done, asins, buttons)
+            env_bottons = get_env_botton(buttons)
+        except AssertionError:
+            observation = 'Invalid action!'
+            hulluci += 1
+        if hulluci > 3:
+            reward = 0.0
+            done = True
+        if "handle_exception" in observation: # running too many sessions, end this session
+            done = True
+            agent.save(retrieved_items)
+            return 0.0
+    
+    agent.save(retrieved_items)
     return 0.0
 
 def run_episodes(session_list):
